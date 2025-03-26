@@ -24,16 +24,25 @@ openapi 사이트에 들어가서 가입을 해주고, API 키를 생성해줍�
 
 # 파이썬으로 파인튜닝하기
 ```
-pip install openai
+pip install openai  
+pip install python-dotenv
 ```
-시작하기 전에 OpenAI 패키지를 설치해주셔야합니다.
+시작하기 전에 OpenAI 패키지를 설치해주셔야합니다. 만약 환경변수로 서비스키를 관리하실 분은 python-dotenv까지 설치해주세요.
 
 ```
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+# .env 파일 로드
+load_dotenv()
+
+# 환경변수 읽기
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
 # OpenAI API를 사용할 클라이언트 객체를 생성하고, 발급받은 API 키를 넣어서 인증
 client = OpenAI(
-    api_key = "서비스키"
+    api_key = openai_api_key
 )
 
 # 학습시킬jsonl.jsonl 파일을 OpenAI 서버에 업로드함, 파일 목적은 파인튜닝 학습용으로 지정
@@ -48,7 +57,7 @@ client.fine_tuning.jobs.create(
   model="gpt-3.5-turbo"
 )
 ```
-이후 파이썬 코드를 이런 식으로 작성해줍니다. "서비스키" 부분에 아까 받았던 API키를 넣으면 되고, GPT-3.5-turbo 같은 Chat 모델용 파인튜닝에서는 jsonl 파일로 된 학습 데이터가 필요합니다. 
+이후 파이썬 코드를 이런 식으로 작성해줍니다. open api key 부분에 아까 받았던 API키를 넣으면 되고, GPT-3.5-turbo 같은 Chat 모델용 파인튜닝에서는 jsonl 파일로 된 학습 데이터가 필요합니다. 
 
 ```
 {
@@ -96,24 +105,26 @@ Ouput Model이 뜨게 됩니다. 우리는 이걸 사용할 것입니다.
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
 from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+# .env 파일 로드
+load_dotenv()
+
+# 환경변수에서 값 읽기
+openai_api_key = os.environ.get("OPENAI_API_KEY")
+mongo_uri = os.environ.get("MONGODB_URI")
 
 client = OpenAI(
-    api_key = "서비스키"
+    api_key = openai_api_key
 )
 
 app = Flask(__name__)
 
-# MongoDB URI
-uri = "몽고DB URI (민감한 정보라 표시하지 않겠습니다)"
-
 # MongoDB 연결
-client2 = MongoClient(uri)
-
-# 데이터베이스 선택
-db = client2['SpringDatabaseApi']
-
-# 컬렉션 선택
-collection = db['Api']  # 컬렉션 이름을 적어주세요.
+mongo_client = MongoClient(mongo_uri)
+db = mongo_client['SpringDatabaseApi']
+collection = db['Api']
 
 @app.route('/medicine/summary', methods=['POST'])
 def summarize_medicine():
@@ -150,7 +161,7 @@ def summarize_medicine():
     response =  client.chat.completions.create(
         model="ft:gpt-3.5-turbo-0125:personal::BFDFfQvI",
         messages=[
-            {"role": "system", "content": "Act like a pharmacist and explain the medicine clearly in English."},
+            {"role": "system", "content": "약사처럼 친절하고 이해하기 쉽게 대답해줘."},
             {"role": "user", "content": f"{context_text}"}
         ]
     )
